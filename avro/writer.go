@@ -3,6 +3,7 @@ package avro
 import (
 	"bufio"
 	"crypto/rand"
+	"fmt"
 	"os"
 )
 
@@ -56,6 +57,7 @@ func (aw *AvroWriter) Write() {
 		serializedRecords = append(serializedRecords, recordBytes...)
 	}
 
+	fmt.Println("Length of Serialized Records: ", *EncodeVInt(int64(len(serializedRecords))))
 	writer.Write(*EncodeVInt(int64(len(serializedRecords))))
 	writer.Write(serializedRecords)
 	writer.Flush()

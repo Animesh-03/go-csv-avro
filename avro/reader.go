@@ -58,10 +58,17 @@ func NewReader(path string) *AvroReader {
 
 	ar.Records = make([]Record, 0)
 	// Block Size
-	DecodeVInt(&buf)
+	blockSize := DecodeVInt(&buf)
+	lastBufSize := len(buf)
 
 	for range numRecords {
 		ar.Records = append(ar.Records, DecodeFields(&buf, ar.GetSchema().Fields))
+	}
+
+	fmt.Println("Block Size: ", blockSize)
+
+	if lastBufSize-len(buf) != int(blockSize) || len(buf) != 16 {
+		panic("invalid block")
 	}
 
 	return &ar
