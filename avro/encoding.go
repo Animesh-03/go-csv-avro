@@ -6,7 +6,7 @@ import (
 )
 
 // Return the parsed Variable Length Int and the number of bytes parsed
-func DecodeVInt(bytes *[]byte) (int64, uint) {
+func DecodeVInt(bytes *[]byte) int64 {
 	moreBit := false
 	value := uint64(0)
 	last := uint(0)
@@ -27,7 +27,7 @@ func DecodeVInt(bytes *[]byte) (int64, uint) {
 
 	*bytes = (*bytes)[last+1:]
 
-	return DecodeZigZag(uint64(value)), last + 1
+	return DecodeZigZag(uint64(value))
 }
 
 // Return decoded int
@@ -49,7 +49,7 @@ func EncodeZigZag(val int64) uint64 {
 }
 
 // Return byte array of a Variable Length Zig-Zag encoded int
-func EncodeVInt(val int64) []byte {
+func EncodeVInt(val int64) *[]byte {
 	vIntBytes := make([]byte, 0)
 
 	// Get the zig-zag encoded value
@@ -70,64 +70,94 @@ func EncodeVInt(val int64) []byte {
 		vIntBytes = append(vIntBytes, byte((moreBit<<7)|lowerBits))
 	}
 
-	return vIntBytes
+	return &vIntBytes
 }
 
 // Returns an array of bytes for the encoded string
 // The first few bytes represent the VInt encoded length of the string
-func EncodeString(s string) []byte {
+func EncodeString(s string) *[]byte {
 	lenBytes := EncodeVInt(int64(len(s)))
-	strBytes := lenBytes
+	strBytes := *lenBytes
 	strBytes = append(strBytes, []byte(s)...)
 
-	return strBytes
+	return &strBytes
 }
 
 // Return the parsed string and the number of bytes parsed
-func DecodeString(bytes *[]byte) (string, uint) {
-	length, offset := DecodeVInt(bytes)
-	*bytes = (*bytes)[offset:]
-	return string((*bytes)[offset : offset+uint(length)]), uint(length) + offset
+func DecodeString(bytes *[]byte) string {
+	length := DecodeVInt(bytes)
+	s := string((*bytes)[:uint(length)])
+	*bytes = (*bytes)[uint(length):]
+
+	return s
 }
 
 // Return a byte with value 1 if true else 0
-func EncodeBool(b bool) byte {
+func EncodeBool(b bool) *[]byte {
 	if b {
-		return byte(1)
+		return &[]byte{1}
 	} else {
-		return byte(0)
+		return &[]byte{0}
 	}
 }
 
 // Return bool from byte
-func DecodeBool(b byte) (bool, uint) {
-	if b == byte(1) {
-		return true, 1
+func DecodeBool(bytes *[]byte) bool {
+	if (*bytes)[0] == byte(1) {
+		*bytes = (*bytes)[1:]
+		return true
 	} else {
-		return false, 1
+		*bytes = (*bytes)[1:]
+		return false
 	}
 }
 
 // Return a byte array from float32
-func EncodeFloat32(val float32) []byte {
+func EncodeFloat32(val float32) *[]byte {
 	buf := make([]byte, 4)
 	binary.LittleEndian.PutUint32(buf, math.Float32bits(val))
-	return buf
+	return &buf
 }
 
 // Return float32 from byte array
-func DecodeFloat32(bytes []byte) (float32, uint) {
-	return math.Float32frombits(binary.LittleEndian.Uint32(bytes)), 4
+func DecodeFloat32(bytes *[]byte) float32 {
+	f := math.Float32frombits(binary.LittleEndian.Uint32(*bytes))
+	*bytes = (*bytes)[4:]
+
+	return f
 }
 
 // Return a byte array from float32
-func EncodeFloat64(val float64) []byte {
+func EncodeFloat64(val float64) *[]byte {
 	buf := make([]byte, 8)
 	binary.LittleEndian.PutUint64(buf, math.Float64bits(val))
-	return buf
+	return &buf
 }
 
 // Return float64 from byte array
-func DecodeFloat64(bytes []byte) (float64, uint) {
-	return math.Float64frombits(binary.LittleEndian.Uint64(bytes)), 8
+func DecodeFloat64(bytes *[]byte) float64 {
+	f := math.Float64frombits(binary.LittleEndian.Uint64(*bytes))
+	*bytes = (*bytes)[8:]
+
+	return f
+}
+
+func DecodeMap(bytes *[]byte) map[string]string {
+	m := make(map[string]string)
+
+	numRecords := DecodeVInt(bytes)
+
+	for range numRecords {
+		s := DecodeString(bytes)
+		v := DecodeString(bytes)
+
+		m[s] = v
+	}
+
+	nextByte := DecodeVInt(bytes)
+	if nextByte != 0 {
+		panic("invalid map found")
+	}
+
+	return m
 }

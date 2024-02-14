@@ -1,28 +1,16 @@
 package avro
 
-import "fmt"
-
-func GetMetaData(bytes []byte) (map[string]string, uint) {
-	numRecords, _ := DecodeVInt(&bytes)
-	// bytes = bytes[offset:]
-
-	fmt.Println(numRecords)
+func GetMetaData(bytes *[]byte) map[string]string {
+	numRecords := DecodeVInt(bytes)
 
 	metadata := make(map[string]string)
 
 	for range numRecords {
-		s, offset := DecodeString(&bytes)
-		bytes = bytes[offset:]
-
-		v, offset := DecodeString(&bytes)
-		bytes = bytes[offset:]
-
-		// fmt.Printf("%v	: %s\n", []byte(s), v)
+		s := DecodeString(bytes)
+		v := DecodeString(bytes)
 
 		metadata[s] = v
 	}
 
-	fmt.Println(metadata)
-
-	return metadata, 1
+	return metadata
 }

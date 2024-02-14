@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 
 	"github.com/animesh-03/go-csv-avro/avro"
 )
@@ -11,8 +9,8 @@ import (
 func main() {
 	// Encode and Decode Int
 	fmt.Println(avro.EncodeVInt(64))
-	fmt.Println(avro.DecodeVInt(&avro.EncodeVInt(372)[:]))
-	fmt.Println(avro.DecodeVInt(&[]byte{0x46}))
+	fmt.Println(avro.DecodeVInt(avro.EncodeVInt(372)))
+	fmt.Println(avro.DecodeVInt(&[]byte{0xc8, 0x01}))
 
 	// Encode and Decode Strings
 	fmt.Println(avro.EncodeString("Hello World"))
@@ -28,26 +26,11 @@ func main() {
 	fmt.Println(avro.EncodeFloat64(float64(3.456789123456)))
 	fmt.Println(avro.DecodeFloat64(avro.EncodeFloat64(float64(3.456789123456))))
 
-	fmt.Println("\n----------------------\n")
+	fmt.Println("\n----------------------")
 
-	file, err := os.Open("twitter.avro")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
+	ar := avro.NewReader("twitter.avro")
 
-	fileStats, err := file.Stat()
-	if err != nil {
-		panic(err)
-	}
-
-	buf := make([]byte, fileStats.Size())
-
-	_, err = bufio.NewReader(file).Read(buf)
-	if err != nil {
-		panic(err)
-	}
-
-	avro.GetMetaData(buf[4:])
-
+	fmt.Printf("Schema:\n%+v\n", ar.GetSchema())
+	fmt.Printf("Codec: %s\n", ar.GetCodec())
+	ar.PrintRecords()
 }
