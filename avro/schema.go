@@ -1,6 +1,9 @@
 package avro
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type SchemaType string
 
@@ -26,20 +29,68 @@ type MetaData struct {
 	codec  string
 }
 
+func NewMetadata(s Schema, codec string) MetaData {
+	if codec == "" {
+		codec = "null"
+	}
+
+	return MetaData{
+		schema: s,
+		codec:  codec,
+	}
+}
+
+func (m *MetaData) Encode() []byte {
+	bytes := make([]byte, 0)
+
+	// Number of keys in metadata
+	bytes = append(bytes, *EncodeVInt(2)...)
+	bytes = append(bytes, m.schema.Encode()...)
+
+	bytes = append(bytes, *EncodeString("avro.codec")...)
+	bytes = append(bytes, *EncodeString(m.codec)...)
+
+	return bytes
+}
+
 type Schema struct {
-	Type      SchemaType `json:"type"`
-	Name      string     `json:"name"`
-	Namespace string     `json:"namespace"`
-	Doc       string     `json:"doc"`
-	Aliases   []string   `json:"aliases"`
-	Fields    []Field    `json:"fields"`
+	Name      string     `json:"name,omitempty"`
+	Type      SchemaType `json:"type,omitempty"`
+	Doc       string     `json:"doc,omitempty"`
+	Namespace string     `json:"namespace,omitempty"`
+	Aliases   []string   `json:"aliases,omitempty"`
+	Fields    []Field    `json:"fields,omitempty"`
+}
+
+func NewSchemaFromJSON(v string) *Schema {
+	schema := Schema{}
+	json.Unmarshal([]byte(v), &schema)
+
+	return &schema
+}
+
+func (s *Schema) Encode() []byte {
+	bytes := make([]byte, 0)
+
+	bytes = append(bytes, *EncodeVInt(int64(len("avro.schema")))...)
+	bytes = append(bytes, []byte("avro.schema")...)
+
+	schemaString, err := json.Marshal(*s)
+	if err != nil {
+		panic(err)
+	}
+
+	schemaBytes := *EncodeString(string(schemaString))
+	bytes = append(bytes, schemaBytes...)
+
+	return bytes
 }
 
 type Field struct {
-	Name      string     `json:"name"`
-	Namespace string     `json:"namespace"`
-	Doc       string     `json:"doc"`
-	Type      SchemaType `json:"type"`
+	Name      string     `json:"name,omitempty"`
+	Namespace string     `json:"namespace,omitempty"`
+	Doc       string     `json:"doc,omitempty"`
+	Type      SchemaType `json:"type,omitempty"`
 }
 
 func DecodeFields(bytes *[]byte, fields []Field) Record {
@@ -87,57 +138,7 @@ func DecodeFields(bytes *[]byte, fields []Field) Record {
 		default:
 			panic(fmt.Sprintf("%s not implemented yet", f.Type))
 		}
-		// a := record[f.Name]
-		// fmt.Printf("Decoding %s: %s\n", f.Name, a.GetRecordValString())
 	}
-
-	// record.PrintRecord()
-	// fmt.Println((*bytes)[:10])
 
 	return record
-}
-
-type Record map[string]RecordVal
-
-type RecordVal struct {
-	Bytes []byte
-	Type  SchemaType
-}
-
-func (r *Record) PrintRecord() {
-	i := 0
-	mapLen := len(map[string]RecordVal(*r))
-	for k, v := range map[string]RecordVal(*r) {
-		if i < mapLen-1 {
-			fmt.Printf("%s: %s, ", k, v.GetRecordValString())
-		} else {
-			fmt.Printf("%s: %s\n", k, v.GetRecordValString())
-		}
-		i++
-	}
-}
-
-func (rv *RecordVal) GetRecordValString() string {
-	var s string
-
-	switch rv.Type {
-	case Null:
-		s = "null"
-	case Int, Long:
-		s = fmt.Sprintf("%d", DecodeVInt(&rv.Bytes))
-	case Float:
-		s = fmt.Sprintf("%f", DecodeFloat32(&rv.Bytes))
-	case Double:
-		s = fmt.Sprintf("%f", DecodeFloat64(&rv.Bytes))
-	case Bytes:
-		s = fmt.Sprintf("%v", rv.Bytes)
-	case String:
-		s = DecodeString(&rv.Bytes)
-	case Bool:
-		s = fmt.Sprintf("%t", DecodeBool(&rv.Bytes))
-	default:
-		panic(fmt.Sprintf("%s not implemented yet", rv.Type))
-	}
-
-	return s
 }

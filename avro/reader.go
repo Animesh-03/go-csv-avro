@@ -2,7 +2,6 @@ package avro
 
 import (
 	"bufio"
-	"encoding/json"
 	"fmt"
 	"os"
 )
@@ -46,10 +45,7 @@ func NewReader(path string) *AvroReader {
 	for k, v := range DecodeMap(&buf) {
 		switch k {
 		case "avro.schema":
-			schema := Schema{}
-			json.Unmarshal([]byte(v), &schema)
-			ar.MetaData.schema = schema
-
+			ar.MetaData.schema = *NewSchemaFromJSON(v)
 		case "avro.codec":
 			ar.MetaData.codec = v
 		}
