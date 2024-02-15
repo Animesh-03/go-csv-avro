@@ -15,7 +15,7 @@ func main() {
 	// Encode and Decode Int
 	fmt.Println(avro.EncodeVInt(64))
 	fmt.Println(avro.DecodeVInt(avro.EncodeVInt(372)))
-	fmt.Println(avro.DecodeVInt(&[]byte{0xe2, 0x01}))
+	fmt.Println(avro.DecodeVInt(&[]byte{0xa8, 0x02}))
 
 	// Encode and Decode Strings
 	fmt.Println(avro.EncodeString("Hello World"))
